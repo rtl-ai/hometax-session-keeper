@@ -13,6 +13,33 @@ async function gotoMockHometax(page) {
   await page.goto('https://hometax.go.kr/test-opener');
 }
 
+async function installRuntimeMessageRecorder(page) {
+  await page.evaluate(() => {
+    window.__messages = [];
+    const runtime = {
+      sendMessage(message) {
+        window.__messages.push(message);
+      }
+    };
+    try {
+      Object.defineProperty(window, 'chrome', {
+        configurable: true,
+        value: { runtime }
+      });
+    } catch {
+      if (!window.chrome || typeof window.chrome !== 'object') throw new Error('cannot install chrome runtime test double');
+      try {
+        Object.defineProperty(window.chrome, 'runtime', {
+          configurable: true,
+          value: runtime
+        });
+      } catch {
+        window.chrome.runtime = runtime;
+      }
+    }
+  });
+}
+
 test('content_script clicks the sessionOut extend button in fixture', async ({ page }) => {
   await page.goto('file://' + path.join(root, 'tests/fixtures/sessionOut.html'));
   await page.addScriptTag({ path: path.join(root, 'src/content_script.js') });
@@ -37,19 +64,7 @@ test('content_script publishes a logged-in fallback badge timer', async ({ page 
       </body>
     </html>
   `);
-  await page.evaluate(() => {
-    window.__messages = [];
-    Object.defineProperty(window, 'chrome', {
-      configurable: true,
-      value: {
-        runtime: {
-          sendMessage(message) {
-            window.__messages.push(message);
-          }
-        }
-      }
-    });
-  });
+  await installRuntimeMessageRecorder(page);
   await page.addScriptTag({ path: path.join(root, 'src/content_script.js') });
   await expect.poll(() => page.evaluate(() => {
     return window.__messages.find((message) => (

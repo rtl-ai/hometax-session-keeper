@@ -12,6 +12,9 @@ const thresholds = new Map([
   ['content_script.js', 70],
   ['page_hook.js', 75]
 ]);
+const browserLaunchOptions = process.env.PLAYWRIGHT_CHROME_CHANNEL
+  ? { channel: process.env.PLAYWRIGHT_CHROME_CHANNEL }
+  : {};
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -58,16 +61,27 @@ async function gotoMockHometax(page) {
 async function installRuntimeMessageRecorder(page) {
   await page.evaluate(() => {
     window.__messages = [];
-    Object.defineProperty(window, 'chrome', {
-      configurable: true,
-      value: {
-        runtime: {
-          sendMessage(message) {
-            window.__messages.push(message);
-          }
-        }
+    const runtime = {
+      sendMessage(message) {
+        window.__messages.push(message);
       }
-    });
+    };
+    try {
+      Object.defineProperty(window, 'chrome', {
+        configurable: true,
+        value: { runtime }
+      });
+    } catch {
+      if (!window.chrome || typeof window.chrome !== 'object') throw new Error('cannot install chrome runtime test double');
+      try {
+        Object.defineProperty(window.chrome, 'runtime', {
+          configurable: true,
+          value: runtime
+        });
+      } catch {
+        window.chrome.runtime = runtime;
+      }
+    }
   });
 }
 
@@ -206,7 +220,7 @@ function printAndCheckCoverage(mergedCoverage) {
   if (!ok) throw new Error('browser coverage threshold failed');
 }
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(browserLaunchOptions);
 const mergedCoverage = new Map();
 try {
   await runContentScriptScenarios(browser, mergedCoverage);
