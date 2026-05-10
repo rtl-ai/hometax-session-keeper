@@ -33,6 +33,8 @@ npx playwright install chromium
 npm run check
 ```
 
+개발/CI 기준 Node 버전은 26 이상입니다. Node 내장 test coverage 임계값 옵션을 사용하므로 더 낮은 Node에서는 `npm run check`가 실패합니다.
+
 빌드 결과는 `dist/`에 생성됩니다.
 
 | 대상 | 산출물 | 설치 방식 |
@@ -56,7 +58,7 @@ npm run check
 
 ## 배포
 
-- GitHub Release: `v0.0.0` 같은 태그를 push하면 `.github/workflows/release.yml`이 전체 검증 후 패키지를 릴리즈에 첨부합니다.
+- GitHub Release: `v0.0.1` 같은 태그를 push하면 `.github/workflows/release.yml`이 전체 검증 후 패키지를 릴리즈에 첨부합니다.
 - Chrome Web Store / Firefox Add-ons: `.github/workflows/store-publish.yml`을 수동 실행합니다. 스토어 계정과 API secrets가 필요합니다.
 - 스토어 제출 문구와 개인정보 고지는 [`docs/store-submission.md`](docs/store-submission.md)와 [`PRIVACY.md`](PRIVACY.md)를 기준으로 관리합니다.
 

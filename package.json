@@ -22,7 +22,7 @@
     "check": "npm run validate && npm run test:unit && npm run test:browser && npm run coverage && npm run build:all"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=26"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0"
