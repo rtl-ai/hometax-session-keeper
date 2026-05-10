@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "Hometax Session Keeper",
+  "version": "0.0.1",
+  "description": "홈택스 로그아웃 시간 연장 안내가 뜨면 자동으로 '연장하기'를 누르고, 가능한 경우 아이콘에 남은 시간을 표시합니다.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Hometax Session Keeper",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "hometax-session-keeper@example.local",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://hometax.go.kr/*", "https://www.hometax.go.kr/*", "https://*.hometax.go.kr/*"],
+      "js": ["content_script.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://hometax.go.kr/*", "https://www.hometax.go.kr/*", "https://*.hometax.go.kr/*"],
+      "js": ["page_hook.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page_hook.js"],
+      "matches": ["https://hometax.go.kr/*", "https://www.hometax.go.kr/*", "https://*.hometax.go.kr/*"]
+    }
+  ]
+}

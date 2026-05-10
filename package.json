@@ -1,0 +1,30 @@
+{
+  "name": "hometax-session-keeper",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Cross-browser WebExtension that keeps HomeTax sessions alive by extending the official timeout prompt.",
+  "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate.mjs",
+    "test": "npm run test:unit",
+    "test:unit": "node --test tests/*.test.mjs",
+    "test:browser": "playwright test tests/playwright/*.spec.mjs",
+    "coverage": "npm run coverage:unit && npm run coverage:browser",
+    "coverage:unit": "node --test --experimental-test-coverage --test-coverage-include='src/background.js' --test-coverage-lines=90 --test-coverage-branches=60 --test-coverage-functions=80 tests/background.unit.test.mjs",
+    "coverage:browser": "node scripts/browser-coverage.mjs",
+    "build": "node scripts/build.mjs",
+    "build:all": "node scripts/build.mjs --all",
+    "debug:build": "node scripts/build.mjs --debug-local",
+    "debug:serve": "node scripts/serve-fixtures.mjs",
+    "publish:chrome": "node scripts/publish-chrome.mjs",
+    "publish:firefox": "node scripts/publish-firefox.mjs",
+    "smoke:playwright": "playwright test tests/playwright/*.spec.mjs",
+    "check": "npm run validate && npm run test:unit && npm run test:browser && npm run coverage && npm run build:all"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0"
+  }
+}

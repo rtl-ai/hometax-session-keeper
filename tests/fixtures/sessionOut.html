@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>sessionOut</title>
+  <script>
+    window.__extendClicked = false;
+    function markExtended() {
+      window.__extendClicked = true;
+      document.body.dataset.extended = 'true';
+      document.getElementById('status').textContent = 'extended';
+    }
+  </script>
+</head>
+<body>
+  <div id="mf_group1337" class="w2group pop_wrap">
+    <div id="mf_textbox64" class="w2textbox txt01">로그아웃 시간이 <span class="txt_or"> 04분46초</span> 남았습니다.<br>로그인 시간을 연장하시겠습니까?</div>
+    <div id="mf_textbox65" class="w2textbox">로그아웃을 연장하시려면 아래 연장하기 버튼을 눌러주세요.</div>
+    <div class="w2group btn_wrap">
+      <span class="w2group btn"><input type="button" id="mf_trigger20" class="w2trigger" value="닫기"></span>
+      <span class="w2group btn btn_confirm"><input type="button" id="mf_trigger16" class="w2trigger" value="연장하기" onclick="markExtended()"></span>
+    </div>
+    <p id="status">waiting</p>
+  </div>
+</body>
+</html>

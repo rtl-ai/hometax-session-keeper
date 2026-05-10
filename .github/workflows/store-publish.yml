@@ -1,0 +1,59 @@
+name: store-publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Store target
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - chrome
+          - firefox
+      chrome_publish:
+        description: Publish Chrome item after upload
+        required: true
+        default: false
+        type: boolean
+      firefox_channel:
+        description: Firefox signing channel
+        required: true
+        default: listed
+        type: choice
+        options:
+          - listed
+          - unlisted
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check
+      - name: Upload Chrome package to Chrome Web Store
+        if: ${{ inputs.target == 'both' || inputs.target == 'chrome' }}
+        env:
+          CHROME_PUBLISHER_ID: ${{ secrets.CHROME_PUBLISHER_ID }}
+          CHROME_ITEM_ID: ${{ secrets.CHROME_ITEM_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          CHROME_SKIP_PUBLISH: ${{ inputs.chrome_publish && '0' || '1' }}
+          CHROME_PUBLISH_TYPE: ${{ secrets.CHROME_PUBLISH_TYPE }}
+          CHROME_SKIP_REVIEW: ${{ secrets.CHROME_SKIP_REVIEW }}
+        run: npm run publish:chrome
+      - name: Submit Firefox package to AMO
+        if: ${{ inputs.target == 'both' || inputs.target == 'firefox' }}
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+          AMO_CHANNEL: ${{ inputs.firefox_channel }}
+        run: npm run publish:firefox
