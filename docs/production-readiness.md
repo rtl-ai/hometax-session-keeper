@@ -58,11 +58,7 @@ The latest real-site run used a manually authenticated HomeTax session and kept 
 | Final badge | `18m` |
 | Timeout boundary | Passed the 30 minute boundary while still logged in |
 
-Local evidence was captured under:
-
-```text
-private real-site evidence stored outside the public repository
-```
+Real-site evidence was captured locally outside the public repository.
 
 Do not commit raw real-site logs or screenshots to a public repository without redaction.
 
