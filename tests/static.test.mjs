@@ -107,3 +107,24 @@ test('timer bridge survives repeated page hook injection and has a logged-in fal
   assert.ok(content.includes('AUTHORITATIVE_TIMER_STALE_MS'));
   assert.ok(content.includes('pageLooksLoggedIn'));
 });
+
+test('low timer path proactively requests a direct in-page session extension', () => {
+  const hook = fs.readFileSync(path.join(root, 'src', 'page_hook.js'), 'utf8');
+  const content = fs.readFileSync(path.join(root, 'src', 'content_script.js'), 'utf8');
+  for (const expected of [
+    'PROACTIVE_EXTEND_THRESHOLD_SECONDS',
+    'REQUEST_DIRECT_EXTEND',
+    'HOMETAX_AUTO_EXTEND_CONTENT_SCRIPT',
+    'proactive-low-timer:',
+    'performDirectSessionExtend'
+  ]) {
+    assert.ok(`${hook}\n${content}`.includes(expected), `missing ${expected}`);
+  }
+});
+
+test('Hometax service-stop block pages clear state instead of pretending to be active sessions', () => {
+  const content = fs.readFileSync(path.join(root, 'src', 'content_script.js'), 'utf8');
+  assert.ok(content.includes('blockPage.html?msg=stop'));
+  assert.ok(content.includes('서비스 중지 시간'));
+  assert.ok(content.includes('hometax-service-stopped'));
+});

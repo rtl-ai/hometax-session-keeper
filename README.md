@@ -7,10 +7,12 @@
 - 실제 세션연장 팝업 창이 열리면 그 창 안에서 `연장하기` 버튼을 자동 클릭합니다.
 - 홈택스가 알려진 `UTXPPABB27` 세션 연장 팝업을 열려다가 브라우저 팝업 차단으로 실패하면, background script가 같은 홈택스 URL을 확장 창으로 다시 열고 자동 클릭합니다.
 - 홈택스의 현재 `UTXPPABB27` 세션 만료 경로에서는 팝업에 의존하지 않고 원래 페이지 컨텍스트에서 세션 연장 함수를 먼저 호출합니다.
+- 홈택스 타이머가 5분 이하로 내려가면 팝업을 기다리지 않고 원래 페이지 컨텍스트에서 세션 연장을 선제 요청합니다.
 - 대체 팝업 창에서 클릭에 성공하면 해당 창을 닫습니다.
 - 홈택스가 공개한 세션 타이머 숫자(`ntsLoginVo.FN_CURRENT_TIME`)가 보이는 경우 확장 아이콘 배지에 남은 시간을 표시합니다.
 - 세션 연장 직후 오래된 서브프레임 타이머가 배지를 낮은 값으로 덮어쓰는 경우를 background에서 거릅니다.
 - 탭 이동, 비로그인 상태, 로그인/인증서 화면 진입 시 배지를 지웁니다.
+- 홈택스 서비스 중지 `blockPage`에서는 세션이 살아있는 것처럼 표시하지 않고 배지를 지웁니다.
 - 공동인증서 로그인 안내/인증서 팝업 화면에서는 현재 URL뿐 아니라 referrer, ancestor origin, same-origin parent/top URL까지 확인해 자동 클릭 스캔과 `window.open()` 후킹을 비활성화합니다.
 - 쿠키, 인증서, 주민번호, 비밀번호, 세금 자료를 읽거나 저장하지 않습니다.
 - 외부 서버로 통신하지 않습니다.
@@ -39,7 +41,7 @@ npm run check
 
 | 대상 | 산출물 | 설치 방식 |
 |---|---|---|
-| Chrome / Edge / Brave / Vivaldi / Opera | `dist/chromium` 또는 `dist/hometax-session-keeper-chromium-v0.0.1.zip` | 확장 프로그램 관리 페이지에서 `dist/chromium`을 압축해제 확장으로 로드 |
+| Chrome / Edge / Brave / Vivaldi / Opera | `dist/chromium` 또는 `dist/hometax-session-keeper-chromium-v0.0.2.zip` | 확장 프로그램 관리 페이지에서 `dist/chromium`을 압축해제 확장으로 로드 |
 | Firefox 128+ 최신 | `dist/firefox-mv3` 또는 `.xpi` | `about:debugging` → This Firefox → Load Temporary Add-on |
 | Firefox 128+ MV2 보완 | `dist/firefox-mv2` 또는 `.xpi` | 최신 Firefox MV3에서 문제가 있을 때만 사용 |
 | Safari | `dist/safari-src` | `scripts/safari-convert.sh`로 Xcode Safari Web Extension 프로젝트 생성 후 테스트/서명 |
@@ -58,7 +60,7 @@ npm run check
 
 ## 배포
 
-- GitHub Release: `v0.0.1` 같은 태그를 push하면 `.github/workflows/release.yml`이 전체 검증 후 패키지를 릴리즈에 첨부합니다.
+- GitHub Release: `v0.0.2` 같은 태그를 push하면 `.github/workflows/release.yml`이 전체 검증 후 패키지를 릴리즈에 첨부합니다.
 - Chrome Web Store / Firefox Add-ons: `.github/workflows/store-publish.yml`을 수동 실행합니다. 스토어 계정과 API secrets가 필요합니다.
 - 스토어 제출 문구와 개인정보 고지는 [`docs/store-submission.md`](docs/store-submission.md)와 [`PRIVACY.md`](PRIVACY.md)를 기준으로 관리합니다.
 
@@ -83,8 +85,10 @@ npm run build
 1. `about:debugging`으로 이동.
 2. `This Firefox` 선택.
 3. `Load Temporary Add-on`.
-4. `dist/firefox-mv3/manifest.json` 또는 `dist/hometax-session-keeper-firefox-mv3-v0.0.1.xpi` 선택.
+4. `dist/firefox-mv3/manifest.json` 또는 `dist/hometax-session-keeper-firefox-mv3-v0.0.2.xpi` 선택.
 5. 기존 홈택스 탭을 새로고침.
+
+Firefox 사생활 보호 창에서 홈택스를 열려면 `about:addons`에서 `Hometax Session Keeper`의 `Run in Private Windows`를 `Allow`로 바꿔야 합니다. Firefox는 사용자가 허용하지 않은 확장을 사생활 보호 창에서 실행하지 않습니다.
 
 ## Safari 변환
 
@@ -110,6 +114,8 @@ npm run debug:serve
 홈택스가 `window.open('', 'sessionOut')`처럼 URL 없이 빈 팝업을 만들고 내부에 HTML을 직접 써 넣는 구조로 바꾸면, 팝업 차단 상태에서는 확장 프로그램도 원래 URL을 알 수 없습니다. 이 경우 홈택스 도메인 팝업을 브라우저에서 허용해야 합니다.
 
 브라우저 확장은 홈택스 내부 구현에 의존합니다. `UTXPPABB27`, `$c.pp.sessionXtn`, `sessionTimer("N")`, `ntsLoginVo` 같은 내부 이름이 바뀌면 새 실사이트 회귀 테스트가 필요합니다.
+
+홈택스 서비스 중지 시간에 표시되는 `blockPage.html?msg=stop...` 페이지는 서버 측 서비스 차단 상태입니다. 확장은 이 상태를 세션 만료로 보지 않고 배지를 지우지만, 서비스 중지 자체를 우회하지 않습니다.
 
 ## 보안 주의
 

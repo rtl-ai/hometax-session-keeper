@@ -8,8 +8,11 @@
   const ESTIMATED_TIMER_INTERVAL_MS = 1_000;
   const ESTIMATED_TIMER_HEARTBEAT_MS = 5_000;
   const AUTHORITATIVE_TIMER_STALE_MS = 7_000;
+  const PROACTIVE_EXTEND_THRESHOLD_SECONDS = 5 * 60;
+  const PROACTIVE_EXTEND_COOLDOWN_MS = 2 * 60_000;
   const EXTEND_BUTTON_TEXT = "연장하기";
   const PAGE_HOOK_SOURCE = "HOMETAX_AUTO_EXTEND_PAGE_HOOK";
+  const CONTENT_SOURCE = "HOMETAX_AUTO_EXTEND_CONTENT_SCRIPT";
   const MSG_OPEN_BLOCKED_POPUP = "HOMETAX_OPEN_BLOCKED_SESSION_POPUP";
   const MSG_EXTEND_CLICKED = "HOMETAX_SESSION_EXTEND_CLICKED";
   const MSG_SESSION_TIMER = "HOMETAX_SESSION_TIMER";
@@ -24,6 +27,10 @@
   const SESSION_POPUP_CODES = [
     "utxppabb27"
   ];
+  const SERVICE_STOP_MARKERS = [
+    "blockPage.html?msg=stop",
+    "서비스 중지 시간"
+  ];
 
   const extensionApi = globalThis.browser || globalThis.chrome;
   let lastClickAt = 0;
@@ -33,6 +40,7 @@
   let estimatedTimerLastSeconds = null;
   let estimatedTimerLastPostedAt = 0;
   let lastAuthoritativeTimerAt = 0;
+  let lastProactiveExtendAt = 0;
 
   function log(...args) {
     try { console.log(LOG_PREFIX, ...args); } catch (_) {}
@@ -139,6 +147,13 @@
     );
   }
 
+  function pageLooksServiceStopped() {
+    const title = normalizedText(document.title);
+    const bodyText = normalizedText(document.body ? document.body.innerText || document.body.textContent : "");
+    const haystack = `${currentUrlLabel()} ${title} ${bodyText}`.toLowerCase();
+    return SERVICE_STOP_MARKERS.some((marker) => haystack.includes(marker.toLowerCase()));
+  }
+
   function isCandidateExtendButton(el) {
     if (!el || !isVisible(el)) return false;
     if (el.disabled || el.getAttribute("aria-disabled") === "true") return false;
@@ -213,6 +228,33 @@
       sessionPopup: isKnownSessionPopupContext(),
       at: now
     });
+    requestProactiveDirectExtend(secondsLeft, sourceLabel, now);
+  }
+
+  function requestProactiveDirectExtend(secondsLeft, sourceLabel, now) {
+    const value = Number(secondsLeft);
+    if (!Number.isFinite(value) || value < 0 || value > PROACTIVE_EXTEND_THRESHOLD_SECONDS) return;
+    if (shouldDisableOnThisPage() || pageLooksServiceStopped()) return;
+    if (window.top !== window && !isKnownSessionPopupContext()) return;
+    if (now - lastProactiveExtendAt < PROACTIVE_EXTEND_COOLDOWN_MS) return;
+    lastProactiveExtendAt = now;
+
+    try {
+      window.postMessage({
+        source: CONTENT_SOURCE,
+        type: "REQUEST_DIRECT_EXTEND",
+        secondsLeft: Math.floor(value),
+        timerSource: String(sourceLabel || "unknown"),
+        reason: `proactive-low-timer:${String(sourceLabel || "unknown")}`,
+        at: now
+      }, location.origin || "*");
+      log("requested proactive in-page session extension", {
+        secondsLeft: Math.floor(value),
+        source: String(sourceLabel || "unknown")
+      });
+    } catch (err) {
+      log("proactive in-page session extension request failed", err && err.message ? err.message : String(err));
+    }
   }
 
   function resetEstimatedLoginTimer(secondsLeft) {
@@ -230,6 +272,13 @@
 
   function startEstimatedLoginTimerFallback() {
     window.setInterval(() => {
+      if (pageLooksServiceStopped()) {
+        estimatedTimerAnchor = null;
+        estimatedTimerLastSeconds = null;
+        estimatedTimerLastPostedAt = 0;
+        notifyClearBadge("hometax-service-stopped");
+        return;
+      }
       if (shouldDisableOnThisPage() || !pageLooksLoggedIn()) {
         estimatedTimerAnchor = null;
         estimatedTimerLastSeconds = null;

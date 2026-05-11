@@ -3,7 +3,9 @@
 
   const INSTALL_FLAG = "__HOMETAX_AUTO_EXTEND_WINDOW_OPEN_HOOK_INSTALLED__";
   const TIMER_BRIDGE_INSTALL_FLAG = "__HOMETAX_AUTO_EXTEND_TIMER_BRIDGE_INSTALLED__";
+  const REQUEST_BRIDGE_INSTALL_FLAG = "__HOMETAX_AUTO_EXTEND_REQUEST_BRIDGE_INSTALLED__";
   const SOURCE = "HOMETAX_AUTO_EXTEND_PAGE_HOOK";
+  const CONTENT_SOURCE = "HOMETAX_AUTO_EXTEND_CONTENT_SCRIPT";
   const LOG_PREFIX = "[Hometax Auto Extend Hook]";
   const DEBUG_ALLOW_LOCALHOST = false;
   const TIMER_INTERVAL_MS = 1_000;
@@ -218,9 +220,8 @@
     } catch (_) {}
   }
 
-  function attemptDirectSessionExtend(rawUrl, target, features, reason) {
+  function performDirectSessionExtend(reason) {
     if (!ENABLE_DIRECT_SESSION_EXTEND) return false;
-    if (!knownSessionPopupUrl(rawUrl, target, features)) return false;
     const now = Date.now();
     if (now - lastDirectExtendAt < DIRECT_EXTEND_COOLDOWN_MS) {
       postDirectExtendResult({ ok: true, skipped: true, reason: "cooldown", secondsLeft: readSessionSecondsLeft() });
@@ -252,6 +253,28 @@
       log("direct session extension failed", message);
       return false;
     }
+  }
+
+  function attemptDirectSessionExtend(rawUrl, target, features, reason) {
+    if (!knownSessionPopupUrl(rawUrl, target, features)) return false;
+    return performDirectSessionExtend(reason);
+  }
+
+  function startContentRequestBridge() {
+    if (window[REQUEST_BRIDGE_INSTALL_FLAG]) return;
+    window[REQUEST_BRIDGE_INSTALL_FLAG] = true;
+    window.addEventListener("message", (event) => {
+      if (event.source !== window) return;
+      const data = event.data;
+      if (!data || data.source !== CONTENT_SOURCE || data.type !== "REQUEST_DIRECT_EXTEND") return;
+
+      const reason = String(data.reason || "content-request");
+      if (shouldDisableHookOnThisPage()) {
+        postDirectExtendResult({ ok: false, error: "disabled-context", reason });
+        return;
+      }
+      performDirectSessionExtend(reason);
+    });
   }
 
   function startSessionTimerBridge() {
@@ -319,6 +342,8 @@
   }
 
   const originalOpen = window.open;
+
+  startContentRequestBridge();
 
   if (shouldDisableHookOnThisPage()) {
     log("window.open hook skipped on login/certificate page");

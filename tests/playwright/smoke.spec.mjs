@@ -75,6 +75,22 @@ test('content_script publishes a logged-in fallback badge timer', async ({ page 
   })).toBeTruthy();
 });
 
+test('content_script clears the badge on a Hometax service-stop block page', async ({ page }) => {
+  await page.route('https://hometax.go.kr/html/comm/error/blockPage.html?msg=stop', (route) => route.fulfill({
+    contentType: 'text/html; charset=utf-8',
+    body: '<!doctype html><html lang="ko"><head><title>서비스 중지</title></head><body>요청하신 서비스는 현재 서비스 중지 시간 입니다. (근무일) [MFE]</body></html>'
+  }));
+  await page.goto('https://hometax.go.kr/html/comm/error/blockPage.html?msg=stop');
+  await installRuntimeMessageRecorder(page);
+  await page.addScriptTag({ path: path.join(root, 'src/content_script.js') });
+  await expect.poll(() => page.evaluate(() => {
+    return window.__messages.find((message) => (
+      message.type === 'HOMETAX_CLEAR_SESSION_BADGE' &&
+      message.reason === 'hometax-service-stopped'
+    ));
+  })).toBeTruthy();
+});
+
 test('page_hook ignores generic blocked Hometax timeout/logout-looking popups', async ({ page }) => {
   await gotoMockHometax(page);
   await page.evaluate(() => {
@@ -114,6 +130,37 @@ test('page_hook uses direct in-page extension for the real UTXPPABB27 timeout ro
   expect(messages.find((message) => message.type === 'EXTEND_ATTEMPTED_IN_PAGE' && message.ok)).toBeTruthy();
   expect(messages.find((message) => message.type === 'SESSION_TIMER' && message.secondsLeft === 1800)).toBeTruthy();
   expect(messages.find((message) => message.type === 'POPUP_BLOCKED')).toBeFalsy();
+});
+
+test('content_script requests proactive in-page extension when a Hometax timer is low', async ({ page }) => {
+  await gotoMockHometax(page);
+  await installRuntimeMessageRecorder(page);
+  await page.evaluate(() => {
+    window.__hookMessages = [];
+    window.__sessionExtended = 0;
+    window.__timerResetArgs = [];
+    window.ntsLoginVo = { FN_CURRENT_TIME: 240, FN_MAX_TIME: 1800 };
+    window.$c = { pp: { sessionXtn() { window.__sessionExtended += 1; } } };
+    window.sessionTimer = (arg) => window.__timerResetArgs.push(arg);
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.source === 'HOMETAX_AUTO_EXTEND_PAGE_HOOK') window.__hookMessages.push(event.data);
+    });
+  });
+  await page.addScriptTag({ path: path.join(root, 'src/content_script.js') });
+  await page.addScriptTag({ path: path.join(root, 'src/page_hook.js') });
+  await expect.poll(() => page.evaluate(() => window.__sessionExtended)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__timerResetArgs)).toEqual(['N']);
+  const hookMessages = await page.evaluate(() => window.__hookMessages);
+  expect(hookMessages.find((message) => (
+    message.type === 'EXTEND_ATTEMPTED_IN_PAGE' &&
+    message.ok &&
+    String(message.reason).startsWith('proactive-low-timer:')
+  ))).toBeTruthy();
+  const runtimeMessages = await page.evaluate(() => window.__messages);
+  expect(runtimeMessages.find((message) => (
+    message.type === 'HOMETAX_SESSION_EXTEND_CLICKED' &&
+    message.source === 'page-direct-extend'
+  ))).toBeTruthy();
 });
 
 test('page_hook falls back to POPUP_BLOCKED when direct extension API is unavailable', async ({ page }) => {

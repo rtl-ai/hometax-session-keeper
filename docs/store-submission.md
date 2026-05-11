@@ -80,7 +80,7 @@ The workflow runs `web-ext sign` through `scripts/publish-firefox.mjs`. Use `lis
 After GitHub is configured:
 
 ```bash
-git tag v0.0.1
+git tag v0.0.2
 git push origin main --tags
 ```
 

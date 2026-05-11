@@ -1,6 +1,6 @@
 {
   "name": "hometax-session-keeper",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "Cross-browser WebExtension that keeps HomeTax sessions alive by extending the official timeout prompt.",
   "type": "module",

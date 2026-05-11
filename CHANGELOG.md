@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.2 - 2026-05-12
+
+Firefox/logout hardening patch.
+
+- Added a proactive low-timer path: when HomeTax reports 5 minutes or less, the content script asks the MAIN-world page hook to call the in-page session extension before waiting for the timeout popup.
+- Added service-stop detection for HomeTax `blockPage.html?msg=stop...` pages so the badge is cleared instead of showing a stale active-session timer.
+- Added Playwright regression coverage for proactive in-page extension and service-stop badge clearing.
+- Documented Firefox private-window permission requirements and the residual limit that HomeTax service-stop pages are server-side blocks, not idle timeouts the extension can prevent.
+
 ## 0.0.1 - 2026-05-10
 
 Initial public release candidate.

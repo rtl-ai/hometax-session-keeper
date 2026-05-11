@@ -14,12 +14,13 @@ npm run check
 2. Load `dist/chromium` as an unpacked extension.
 3. Open a fresh HomeTax tab after the extension is loaded.
 4. Sign in manually.
-5. Confirm the extension menu shows `Hometax Auto Session Extend` and a minute badge when the HomeTax timer is visible.
+5. Confirm the extension menu shows `Hometax Session Keeper` and a minute badge when the HomeTax timer is visible.
 6. Leave the tab idle for at least 36 minutes.
 7. Pass criteria:
    - HomeTax still shows a logged-in page.
    - `로그아웃` is visible and `로그인` is not visible.
    - The extension console includes `direct session extension attempted` or, for popup fallback, the fallback popup opens and closes after `연장하기`.
+   - Before the final timeout prompt, a low timer can produce `requested proactive in-page session extension`.
    - The badge remains in a plausible post-extension range and is not overwritten by stale second/minute values from older frames.
 
 ## Popup-Blocked Fallback
@@ -35,6 +36,19 @@ npm run check
 1. Open HomeTax login and 공동인증서 screens.
 2. Confirm the extension does not click controls on these pages.
 3. Confirm login/certificate UI does not flicker because of extension automation.
+
+## Firefox Private Windows
+
+1. Open `about:addons`.
+2. Select `Hometax Session Keeper`.
+3. If testing HomeTax in a private window, set `Run in Private Windows` to `Allow`.
+4. Confirm the extension icon is visible in that private HomeTax window before starting the idle test.
+
+If the extension is not allowed in private windows, Firefox will not run its content scripts or badge logic there.
+
+## HomeTax Service Stop Page
+
+If HomeTax navigates to `html/comm/error/blockPage.html?msg=stop...` and the page text says `서비스 중지 시간`, treat that as a server-side service-stop page rather than an extension session-timeout miss. The extension should clear its badge on this page.
 
 ## Local Fixture Path
 
